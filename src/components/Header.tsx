@@ -3,7 +3,7 @@ import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogIn, LogOut, User, ChevronDown } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,18 @@ import {
 const Header = () => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isAuthPage = location.pathname === "/auth";
+
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error during sign out:", error);
+    }
+  };
 
   return (
     <header className="w-full py-3 px-4 absolute top-0 z-10">
@@ -40,7 +51,7 @@ const Header = () => {
               >
                 <DropdownMenuItem 
                   className="cursor-pointer hover:bg-slate-700 focus:bg-slate-700"
-                  onClick={signOut}
+                  onClick={handleSignOut}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   <span>Sign out</span>

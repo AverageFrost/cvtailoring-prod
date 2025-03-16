@@ -202,7 +202,7 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
       return new Response(
         JSON.stringify({ 
           error: "Invalid response from Anthropic API", 
-          details: `Expected JSON but got ${contentType}. Response starts with: ${textResponse.substring(0, 100)}...` 
+          details: `Expected JSON but got ${contentType || 'unknown content type'}. Response starts with: ${textResponse.substring(0, 100)}...` 
         }),
         { 
           status: 500, 
@@ -211,8 +211,26 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
       );
     }
     
-    // Parse the JSON response
-    const data = await response.json();
+    let data;
+    try {
+      // Parse the JSON response
+      data = await response.json();
+    } catch (jsonError) {
+      const textResponse = await response.text();
+      console.error("Failed to parse JSON from Anthropic API:", jsonError);
+      console.error("Raw response:", textResponse.substring(0, 300));
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to parse JSON response", 
+          details: `Error: ${jsonError.message}. Raw response starts with: ${textResponse.substring(0, 100)}...` 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     // Check if there's an error in the response
     if (data.error) {

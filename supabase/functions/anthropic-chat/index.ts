@@ -13,6 +13,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("--- New request received ---");
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,6 +22,7 @@ serve(async (req) => {
 
   // Check if API key exists
   if (!anthropicApiKey) {
+    console.error("Missing Anthropic API key");
     return new Response(
       JSON.stringify({ error: 'Missing Anthropic API key' }),
       { 
@@ -30,7 +33,39 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, cv, jobDescription, userId } = await req.json();
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("Failed to parse request JSON:", parseError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request format', 
+          details: 'Could not parse request body as JSON' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    const { prompt, cv, jobDescription, userId } = requestBody;
+    
+    if (!cv || !jobDescription) {
+      console.error("Missing required fields");
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing required fields', 
+          details: 'Both CV and job description are required' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     console.log("Received request for CV tailoring");
     console.log("CV length:", cv?.length || 'No CV provided');
@@ -156,194 +191,174 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
 
     console.log("Sending request to Anthropic API");
     
-    // Make the request to Anthropic API
-    const response = await fetch(anthropicApiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: "claude-3-haiku-20240307", // Use the available model we have
-        max_tokens: 4000,
-        system: systemPrompt,
-        messages: messages
-      })
-    });
+    try {
+      // Make the request to Anthropic API
+      const anthropicResponse = await fetch(anthropicApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicApiKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-3-haiku-20240307", // Use the available model we have
+          max_tokens: 4000,
+          system: systemPrompt,
+          messages: messages
+        })
+      });
 
-    // Check if the response is ok (status 200-299)
-    if (!response.ok) {
-      // Log the error response for debugging
-      console.error("Anthropic API error status:", response.status);
-      
-      try {
-        // Try to get the response as text first
-        const errorText = await response.text();
+      // Check if the response is ok (status 200-299)
+      if (!anthropicResponse.ok) {
+        console.error("Anthropic API error status:", anthropicResponse.status);
+        
+        // Try to get the response as text for better error reporting
+        const errorText = await anthropicResponse.text();
         console.error("Anthropic API error response:", errorText);
         
-        // Check if the error response is JSON
-        let parsedError;
+        // Try to parse as JSON if possible, otherwise return the raw text
+        let errorDetails;
         try {
-          parsedError = JSON.parse(errorText);
+          errorDetails = JSON.parse(errorText);
         } catch (jsonError) {
-          // If it's not valid JSON, return the text response with appropriate headers
+          // Not valid JSON, return text with appropriate status
           return new Response(
             JSON.stringify({ 
-              error: `Error calling Anthropic API: ${response.status}`,
-              details: `Response was not valid JSON: ${errorText.substring(0, 200)}...` 
+              error: `Error calling Anthropic API: ${anthropicResponse.status}`,
+              details: errorText.substring(0, 500) // Limit length of error text
             }),
             { 
-              status: response.status || 500, 
+              status: anthropicResponse.status || 500, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
           );
         }
         
-        // If we have JSON, return a formatted error
+        // Return formatted JSON error
         return new Response(
           JSON.stringify({ 
-            error: `Error calling Anthropic API: ${response.status}`,
-            details: parsedError.error?.message || JSON.stringify(parsedError) 
+            error: `Error calling Anthropic API: ${anthropicResponse.status}`,
+            details: errorDetails.error?.message || JSON.stringify(errorDetails) 
           }),
           { 
-            status: response.status || 500, 
+            status: anthropicResponse.status || 500, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
+            }
         );
-      } catch (error) {
-        // If we can't even read the response as text
-        console.error("Failed to read error response:", error);
+      }
+
+      // Check content type to ensure we're dealing with JSON
+      const contentType = anthropicResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await anthropicResponse.text();
+        console.error("Unexpected content type from Anthropic API:", contentType);
+        console.error("Response body sample:", textResponse.substring(0, 200));
+        
         return new Response(
           JSON.stringify({ 
-            error: `Error calling Anthropic API: ${response.status}`,
-            details: "Failed to read error response" 
+            error: "Invalid response from Anthropic API", 
+            details: `Expected JSON but got ${contentType || 'unknown content type'}. Response starts with: ${textResponse.substring(0, 100)}...` 
           }),
           { 
-            status: response.status || 500, 
+            status: 500, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         );
       }
-    }
-
-    // Verify that we have JSON response before trying to parse it
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const textResponse = await response.text();
-      console.error("Unexpected content type from Anthropic API:", contentType);
-      console.error("Response body sample:", textResponse.substring(0, 200));
       
-      return new Response(
-        JSON.stringify({ 
-          error: "Invalid response from Anthropic API", 
-          details: `Expected JSON but got ${contentType || 'unknown content type'}. Response starts with: ${textResponse.substring(0, 100)}...` 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-    
-    let data;
-    try {
       // Parse the JSON response
-      data = await response.json();
-    } catch (jsonError) {
-      const textResponse = await response.text();
-      console.error("Failed to parse JSON from Anthropic API:", jsonError);
-      console.error("Raw response:", textResponse.substring(0, 300));
+      const data = await anthropicResponse.json();
       
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to parse JSON response", 
-          details: `Error: ${jsonError.message}. Raw response starts with: ${textResponse.substring(0, 100)}...` 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-    
-    // Check if there's an error in the response
-    if (data.error) {
-      console.error("Anthropic API error:", data.error);
-      return new Response(
-        JSON.stringify({ 
-          error: "Error from Anthropic API", 
-          details: data.error.message || JSON.stringify(data.error) 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
+      // Check if there's an error in the response
+      if (data.error) {
+        console.error("Anthropic API error:", data.error);
+        return new Response(
+          JSON.stringify({ 
+            error: "Error from Anthropic API", 
+            details: data.error.message || JSON.stringify(data.error) 
+          }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
 
-    // Extract the content from Anthropic's response
-    const aiResponse = data.content && data.content[0] && data.content[0].text 
-      ? data.content[0].text 
-      : "Sorry, I couldn't generate a response.";
+      // Extract the content from Anthropic's response
+      const aiResponse = data.content && data.content[0] && data.content[0].text 
+        ? data.content[0].text 
+        : "Sorry, I couldn't generate a response.";
 
-    // Process the response to extract the three parts
-    const processedResults = processAnthropicResponse(aiResponse);
-    
-    // If we have a Supabase client and user ID, save the tailored CV as a file and store in database
-    if (supabase && userId && processedResults.tailoredCV) {
-      try {
-        // Create a blob and upload to Supabase storage
-        const buffer = new TextEncoder().encode(processedResults.tailoredCV);
-        const filePath = `${userId}/${Date.now()}_tailored_cv.docx`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('tailored_cv')
-          .upload(filePath, buffer, {
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            upsert: true
-          });
+      // Process the response to extract the three parts
+      const processedResults = processAnthropicResponse(aiResponse);
+      
+      // If we have a Supabase client and user ID, save the tailored CV as a file and store in database
+      if (supabase && userId && processedResults.tailoredCV) {
+        try {
+          // Create a blob and upload to Supabase storage
+          const buffer = new TextEncoder().encode(processedResults.tailoredCV);
+          const filePath = `${userId}/${Date.now()}_tailored_cv.docx`;
           
-        if (uploadError) {
-          console.error("Error uploading file to storage:", uploadError);
-        } else {
-          console.log("File uploaded successfully:", uploadData?.path);
-          
-          // Add the file path to the processed results
-          processedResults.tailoredCVFilePath = filePath;
-          
-          // Save the results to the database
-          const { error: insertError } = await supabase
-            .from('tailoring_results')
-            .insert({
-              user_id: userId,
-              original_cv: cv,
-              job_description: jobDescription,
-              tailored_cv: processedResults.tailoredCV,
-              summary: processedResults.summary,
-              improvements: processedResults.improvements,
-              tailored_cv_file_path: filePath
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('tailored_cv')
+            .upload(filePath, buffer, {
+              contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              upsert: true
             });
             
-          if (insertError) {
-            console.error("Error saving results to database:", insertError);
+          if (uploadError) {
+            console.error("Error uploading file to storage:", uploadError);
+          } else {
+            console.log("File uploaded successfully:", uploadData?.path);
+            
+            // Add the file path to the processed results
+            processedResults.tailoredCVFilePath = filePath;
+            
+            // Save the results to the database
+            const { error: insertError } = await supabase
+              .from('tailoring_results')
+              .insert({
+                user_id: userId,
+                original_cv: cv,
+                job_description: jobDescription,
+                tailored_cv: processedResults.tailoredCV,
+                summary: processedResults.summary,
+                improvements: processedResults.improvements,
+                tailored_cv_file_path: filePath
+              });
+              
+            if (insertError) {
+              console.error("Error saving results to database:", insertError);
+            }
           }
+        } catch (storageError) {
+          console.error("Error in storage operations:", storageError);
         }
-      } catch (storageError) {
-        console.error("Error in storage operations:", storageError);
       }
-    }
 
-    return new Response(JSON.stringify(processedResults), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200
-    });
-  } catch (error) {
-    console.error("Error in anthropic-chat function:", error);
+      return new Response(JSON.stringify(processedResults), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      });
+    } catch (anthropicError) {
+      console.error("Error calling Anthropic API:", anthropicError);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to communicate with Anthropic API",
+          details: anthropicError instanceof Error ? anthropicError.message : "Unknown error" 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+  } catch (mainError) {
+    console.error("Unhandled error in anthropic-chat function:", mainError);
     return new Response(
       JSON.stringify({ 
         error: "Server error processing your request",
-        details: error.message || "An unknown error occurred" 
+        details: mainError instanceof Error ? mainError.message : "An unknown error occurred" 
       }),
       { 
         status: 500,

@@ -20,13 +20,15 @@ const TailoredCVPanel = ({ content, onDownload, isDownloading = false }: Tailore
     : "No tailored CV content available. Please try again.";
 
   const handleDownload = () => {
+    if (isDownloading) return;
+    
     try {
       onDownload();
     } catch (error) {
       console.error("Error during download:", error);
       toast({
         title: "Download Failed",
-        description: "There was a problem downloading your CV. Please try again.",
+        description: error instanceof Error ? error.message : "There was a problem downloading your CV. Please try again.",
         variant: "destructive"
       });
     }
@@ -40,7 +42,7 @@ const TailoredCVPanel = ({ content, onDownload, isDownloading = false }: Tailore
           onClick={handleDownload}
           className="bg-[#3F2A51] hover:bg-[#2A1C36] text-white"
           size="sm"
-          disabled={isDownloading}
+          disabled={isDownloading || !content || content.trim() === ""}
         >
           {isDownloading ? (
             <>

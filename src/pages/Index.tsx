@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -359,6 +360,7 @@ const Index = () => {
       }, 1000);
       
       try {
+        // Modified API request with better error handling
         const response = await fetch('/api/anthropic-chat', {
           method: 'POST',
           headers: {
@@ -368,7 +370,8 @@ const Index = () => {
           body: JSON.stringify({
             cv: cvContentToUse || "No CV content provided.",
             jobDescription: jobDescContentToUse || "No job description provided.",
-            prompt: "Tailor this CV to the job description"
+            prompt: "Tailor this CV to the job description",
+            userId: user?.id || null
           })
         });
 
@@ -376,30 +379,36 @@ const Index = () => {
         if (!response.ok) {
           let errorMessage = `Request failed with status: ${response.status}`;
           
+          // Get the content type for better error diagnostics
+          const contentType = response.headers.get('content-type') || 'unknown';
+          
           try {
-            // Try to get error details from response
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorData.details || errorMessage;
-          } catch (err) {
-            // If response is not JSON, try to get text
-            try {
+            // Handle different response types based on content type
+            if (contentType.includes('application/json')) {
+              // Try to get error details from JSON response
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorData.details || errorMessage;
+            } else {
+              // If not JSON, try to get text (limited to prevent large HTML errors)
               const errorText = await response.text();
-              if (errorText) {
-                errorMessage += ` - ${errorText.substring(0, 100)}...`;
-              }
-            } catch (textErr) {
-              console.error("Couldn't extract error details:", textErr);
+              const truncatedText = errorText.substring(0, 150) + '...';
+              errorMessage = `${errorMessage} - Non-JSON response (${contentType}): ${truncatedText}`;
             }
+          } catch (readError) {
+            console.error("Couldn't extract error details:", readError);
+            errorMessage = `${errorMessage} - Unable to parse error response`;
           }
           
           throw new Error(errorMessage);
         }
         
-        // Check the content type 
+        // Check the content type before trying to parse as JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
+          // For non-JSON responses, get a preview of what was returned
           const textResponse = await response.text();
-          throw new Error(`Expected JSON response but got ${contentType}. Response: ${textResponse.substring(0, 100)}...`);
+          const truncatedText = textResponse.substring(0, 150) + '...';
+          throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}. Response: ${truncatedText}`);
         }
         
         // Now parse the JSON
@@ -426,15 +435,16 @@ const Index = () => {
         }
         
         navigate("/results");
-      } catch (apiError: any) {
+      } catch (apiError) {
         console.error("API request error:", apiError);
-        throw new Error(`API error: ${apiError.message}`);
+        const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+        throw new Error(`API error: ${errorMessage}`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error processing CV:", error);
       toast({
         title: "Processing failed",
-        description: error.message || "An error occurred while tailoring your CV",
+        description: error instanceof Error ? error.message : "An unknown error occurred while tailoring your CV",
         variant: "destructive",
       });
       setIsProcessing(false);

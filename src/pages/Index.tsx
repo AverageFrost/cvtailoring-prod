@@ -358,43 +358,78 @@ const Index = () => {
         });
       }, 1000);
       
-      const response = await fetch('/api/anthropic-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1bGRybHlqamltdm9pZWR3am1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4MjExMjQsImV4cCI6MjA1NzM5NzEyNH0.IFIIgTWdFu5A2s5Ke5Uvy4l-6NW4gFNVx8sE_3Da-zI`,
-        },
-        body: JSON.stringify({
-          cv: cvContentToUse || "No CV content provided.",
-          jobDescription: jobDescContentToUse || "No job description provided.",
-          prompt: "Tailor this CV to the job description"
-        })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API response error:", errorText);
-        throw new Error(errorText);
+      try {
+        const response = await fetch('/api/anthropic-chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1bGRybHlqamltdm9pZWR3am1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4MjExMjQsImV4cCI6MjA1NzM5NzEyNH0.IFIIgTWdFu5A2s5Ke5Uvy4l-6NW4gFNVx8sE_3Da-zI`,
+          },
+          body: JSON.stringify({
+            cv: cvContentToUse || "No CV content provided.",
+            jobDescription: jobDescContentToUse || "No job description provided.",
+            prompt: "Tailor this CV to the job description"
+          })
+        });
+
+        // First check if the response is ok
+        if (!response.ok) {
+          let errorMessage = `Request failed with status: ${response.status}`;
+          
+          try {
+            // Try to get error details from response
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.details || errorMessage;
+          } catch (err) {
+            // If response is not JSON, try to get text
+            try {
+              const errorText = await response.text();
+              if (errorText) {
+                errorMessage += ` - ${errorText.substring(0, 100)}...`;
+              }
+            } catch (textErr) {
+              console.error("Couldn't extract error details:", textErr);
+            }
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        // Check the content type 
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const textResponse = await response.text();
+          throw new Error(`Expected JSON response but got ${contentType}. Response: ${textResponse.substring(0, 100)}...`);
+        }
+        
+        // Now parse the JSON
+        const result = await response.json();
+        
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        
+        console.log("API response:", result);
+        
+        sessionStorage.setItem('tailoringResults', JSON.stringify({
+          originalCV: cvContentToUse,
+          jobDescription: jobDescContentToUse,
+          tailoredCV: result.tailoredCV,
+          improvements: result.improvements,
+          summary: result.summary
+        }));
+        
+        // Clear the interval before navigating
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+        
+        navigate("/results");
+      } catch (apiError: any) {
+        console.error("API request error:", apiError);
+        throw new Error(`API error: ${apiError.message}`);
       }
-      
-      const result = await response.json();
-      console.log("API response:", result);
-      
-      sessionStorage.setItem('tailoringResults', JSON.stringify({
-        originalCV: cvContentToUse,
-        jobDescription: jobDescContentToUse,
-        tailoredCV: result.tailoredCV,
-        improvements: result.improvements,
-        summary: result.summary
-      }));
-      
-      // Clear the interval before navigating
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-      
-      navigate("/results");
     } catch (error: any) {
       console.error("Error processing CV:", error);
       toast({

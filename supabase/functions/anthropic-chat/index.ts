@@ -175,21 +175,56 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
     // Check if the response is ok (status 200-299)
     if (!response.ok) {
       // Log the error response for debugging
-      const errorText = await response.text();
       console.error("Anthropic API error status:", response.status);
-      console.error("Anthropic API error response:", errorText);
       
-      // Return a proper JSON error
-      return new Response(
-        JSON.stringify({ 
-          error: `Error calling Anthropic API: ${response.status}`,
-          details: `Response was not OK: ${errorText.substring(0, 200)}...` 
-        }),
-        { 
-          status: response.status || 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      try {
+        // Try to get the response as text first
+        const errorText = await response.text();
+        console.error("Anthropic API error response:", errorText);
+        
+        // Check if the error response is JSON
+        let parsedError;
+        try {
+          parsedError = JSON.parse(errorText);
+        } catch (jsonError) {
+          // If it's not valid JSON, return the text response with appropriate headers
+          return new Response(
+            JSON.stringify({ 
+              error: `Error calling Anthropic API: ${response.status}`,
+              details: `Response was not valid JSON: ${errorText.substring(0, 200)}...` 
+            }),
+            { 
+              status: response.status || 500, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
         }
-      );
+        
+        // If we have JSON, return a formatted error
+        return new Response(
+          JSON.stringify({ 
+            error: `Error calling Anthropic API: ${response.status}`,
+            details: parsedError.error?.message || JSON.stringify(parsedError) 
+          }),
+          { 
+            status: response.status || 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      } catch (error) {
+        // If we can't even read the response as text
+        console.error("Failed to read error response:", error);
+        return new Response(
+          JSON.stringify({ 
+            error: `Error calling Anthropic API: ${response.status}`,
+            details: "Failed to read error response" 
+          }),
+          { 
+            status: response.status || 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
     }
 
     // Verify that we have JSON response before trying to parse it

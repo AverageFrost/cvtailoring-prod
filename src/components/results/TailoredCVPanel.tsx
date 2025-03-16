@@ -3,6 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface TailoredCVPanelProps {
   content: string;
@@ -11,17 +12,32 @@ interface TailoredCVPanelProps {
 }
 
 const TailoredCVPanel = ({ content, onDownload, isDownloading = false }: TailoredCVPanelProps) => {
+  const { toast } = useToast();
+  
   // Make sure we display actual content or a fallback message
   const displayContent = content && content.trim() !== "" && !content.startsWith("[Updated CV") 
     ? content
     : "No tailored CV content available. Please try again.";
+
+  const handleDownload = () => {
+    try {
+      onDownload();
+    } catch (error) {
+      console.error("Error during download:", error);
+      toast({
+        title: "Download Failed",
+        description: "There was a problem downloading your CV. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <Card className="border-[#E2DCF8] shadow-sm h-full">
       <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
         <CardTitle className="text-[#3F2A51] text-lg">Tailored CV</CardTitle>
         <Button 
-          onClick={onDownload}
+          onClick={handleDownload}
           className="bg-[#3F2A51] hover:bg-[#2A1C36] text-white"
           size="sm"
           disabled={isDownloading}

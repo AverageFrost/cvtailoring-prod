@@ -7,9 +7,12 @@ const anthropicApiUrl = "https://api.anthropic.com/v1/messages";
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+// Make sure CORS headers are correctly set
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
 };
 
 serve(async (req) => {
@@ -17,7 +20,11 @@ serve(async (req) => {
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    console.log("Handling CORS preflight request");
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
+    });
   }
 
   // Check if API key exists
@@ -27,7 +34,7 @@ serve(async (req) => {
       JSON.stringify({ error: 'Missing Anthropic API key' }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: corsHeaders
       }
     );
   }
@@ -37,6 +44,7 @@ serve(async (req) => {
     let requestBody;
     try {
       requestBody = await req.json();
+      console.log("Request body parsed successfully");
     } catch (parseError) {
       console.error("Failed to parse request JSON:", parseError);
       return new Response(
@@ -46,7 +54,7 @@ serve(async (req) => {
         }),
         { 
           status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: corsHeaders
         }
       );
     }
@@ -62,7 +70,7 @@ serve(async (req) => {
         }),
         { 
           status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: corsHeaders
         }
       );
     }
@@ -221,6 +229,7 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
         try {
           errorDetails = JSON.parse(errorText);
         } catch (jsonError) {
+          console.error("Could not parse error response as JSON");
           // Not valid JSON, return text with appropriate status
           return new Response(
             JSON.stringify({ 
@@ -229,7 +238,7 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
             }),
             { 
               status: anthropicResponse.status || 500, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              headers: corsHeaders
             }
           );
         }
@@ -242,13 +251,15 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
           }),
           { 
             status: anthropicResponse.status || 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
+            headers: corsHeaders
+          }
         );
       }
 
       // Check content type to ensure we're dealing with JSON
       const contentType = anthropicResponse.headers.get('content-type');
+      console.log("Anthropic API response content type:", contentType);
+      
       if (!contentType || !contentType.includes('application/json')) {
         const textResponse = await anthropicResponse.text();
         console.error("Unexpected content type from Anthropic API:", contentType);
@@ -261,13 +272,30 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
           }),
           { 
             status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            headers: corsHeaders
           }
         );
       }
       
       // Parse the JSON response
-      const data = await anthropicResponse.json();
+      let data;
+      try {
+        data = await anthropicResponse.json();
+        console.log("Successfully parsed Anthropic API response");
+      } catch (jsonError) {
+        console.error("Failed to parse Anthropic API response as JSON:", jsonError);
+        const textResponse = await anthropicResponse.text();
+        return new Response(
+          JSON.stringify({ 
+            error: "Failed to parse Anthropic API response", 
+            details: `Response starts with: ${textResponse.substring(0, 200)}...` 
+          }),
+          { 
+            status: 500, 
+            headers: corsHeaders
+          }
+        );
+      }
       
       // Check if there's an error in the response
       if (data.error) {
@@ -279,7 +307,7 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
           }),
           { 
             status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            headers: corsHeaders
           }
         );
       }
@@ -336,8 +364,9 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
         }
       }
 
+      console.log("Returning successful response to client");
       return new Response(JSON.stringify(processedResults), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
         status: 200
       });
     } catch (anthropicError) {
@@ -349,7 +378,7 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
         }),
         { 
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: corsHeaders
         }
       );
     }
@@ -362,7 +391,7 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
       }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: corsHeaders
       }
     );
   }

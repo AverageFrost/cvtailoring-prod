@@ -139,8 +139,8 @@ const Results = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F6FE] flex flex-col items-center px-4 py-4">
-      <div className="w-full max-w-6xl">
+    <div className="min-h-screen bg-[#F8F6FE] flex flex-col items-center px-4 py-2">
+      <div className="w-full max-w-6xl mt-2">
         <SuccessBanner 
           title="Success!"
           description="Your CV has been tailored to match the job description. You can now download it as a .docx file or start over."
@@ -148,7 +148,7 @@ const Results = () => {
           onAction={() => navigate('/')}
         />
         
-        <h1 className="text-2xl font-semibold text-[#3F2A51] mb-6 text-left">Your Tailored CV</h1>
+        <h1 className="text-2xl font-semibold text-[#3F2A51] mb-4 mt-1 text-left">Your Tailored CV</h1>
         
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           <JobDescriptionPanel content={results.jobDescription} />

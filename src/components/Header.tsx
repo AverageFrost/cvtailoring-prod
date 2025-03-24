@@ -28,7 +28,7 @@ const Header = () => {
   };
 
   return (
-    <header className="w-full py-3 px-4 absolute top-0 z-10">
+    <header className="w-full py-2 px-4 absolute top-0 z-10">
       <div className="max-w-6xl mx-auto flex justify-between items-center">
         <Link to="/" className="text-xl font-bold text-[#3F2A51]">CV Tailor</Link>
         

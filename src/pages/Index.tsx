@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import mammoth from "mammoth";
+import { callAnthropicAPI } from '@/lib/api';
 
 interface FileData {
   file: File | null;
@@ -32,6 +32,8 @@ const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
   
   const isUploading = isCvUploading || isJobUploading;
   
@@ -301,6 +303,8 @@ const Index = () => {
     }
     
     setIsProcessing(true);
+    setError(null);
+    setProgress(0);
     
     try {
       // Calculate estimated processing time based on file sizes
@@ -360,101 +364,46 @@ const Index = () => {
       }, 1000);
       
       try {
-        // Modified API request with better error handling
-        const response = await fetch('/api/anthropic-chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1bGRybHlqamltdm9pZWR3am1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4MjExMjQsImV4cCI6MjA1NzM5NzEyNH0.IFIIgTWdFu5A2s5Ke5Uvy4l-6NW4gFNVx8sE_3Da-zI`,
-          },
-          body: JSON.stringify({
-            cv: cvContentToUse || "No CV content provided.",
-            jobDescription: jobDescContentToUse || "No job description provided.",
-            prompt: "Tailor this CV to the job description",
-            userId: user?.id || null
-          })
+        // Use the new API utility instead of direct fetch
+        const apiResponse = await callAnthropicAPI({
+          cv: cvContentToUse || "No CV content provided.",
+          jobDescription: jobDescContentToUse || "No job description provided.",
+          prompt: "Tailor this CV to the job description",
+          userId: user?.id || null
         });
-
-        // First check if the response is ok
-        if (!response.ok) {
-          let errorMessage = `Request failed with status: ${response.status}`;
-          
-          // Get the content type for better error diagnostics
-          const contentType = response.headers.get('content-type') || 'unknown';
-          
-          try {
-            // Handle different response types based on content type
-            if (contentType.includes('application/json')) {
-              // Try to get error details from JSON response
-              const errorData = await response.json();
-              errorMessage = errorData.error || errorData.details || errorMessage;
-            } else {
-              // If not JSON, try to get text (limited to prevent large HTML errors)
-              const errorText = await response.text();
-              const truncatedText = errorText.substring(0, 150) + '...';
-              errorMessage = `${errorMessage} - Non-JSON response (${contentType}): ${truncatedText}`;
-            }
-          } catch (readError) {
-            console.error("Couldn't extract error details:", readError);
-            errorMessage = `${errorMessage} - Unable to parse error response`;
-          }
-          
-          throw new Error(errorMessage);
-        }
         
-        // Check the content type before trying to parse as JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          // For non-JSON responses, get a preview of what was returned
-          const textResponse = await response.text();
-          const truncatedText = textResponse.substring(0, 150) + '...';
-          throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}. Response: ${truncatedText}`);
-        }
-        
-        // Now parse the JSON
-        const result = await response.json();
-        
-        if (result.error) {
-          throw new Error(result.error);
-        }
-        
-        console.log("API response:", result);
-        
+        // Store results in session storage for the results page
         sessionStorage.setItem('tailoringResults', JSON.stringify({
           originalCV: cvContentToUse,
           jobDescription: jobDescContentToUse,
-          tailoredCV: result.tailoredCV,
-          improvements: result.improvements,
-          summary: result.summary
+          tailoredCV: apiResponse.tailoredCV,
+          improvements: apiResponse.improvements,
+          summary: apiResponse.summary
         }));
         
-        // Clear the interval before navigating
+        // Clear any interval that might be running
         if (countdownIntervalRef.current) {
           clearInterval(countdownIntervalRef.current);
           countdownIntervalRef.current = null;
         }
         
-        navigate("/results");
-      } catch (apiError) {
-        console.error("API request error:", apiError);
-        const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
-        throw new Error(`API error: ${errorMessage}`);
+        // Navigate to results page
+        navigate('/results');
+      } catch (error) {
+        console.error('API error:', error);
+        setError(error instanceof Error ? error.message : String(error));
+        setIsProcessing(false);
+        
+        // Clear countdown if there was an error
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
       }
     } catch (error) {
-      console.error("Error processing CV:", error);
-      toast({
-        title: "Processing failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred while tailoring your CV",
-        variant: "destructive",
-      });
+      console.error('Processing error:', error);
+      setError('An unexpected error occurred while processing your request.');
       setIsProcessing(false);
-      setEstimatedSecondsRemaining(0);
-      
-      // Clear the interval on error
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
     }
   };
   

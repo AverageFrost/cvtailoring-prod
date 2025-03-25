@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader } from "lucide-react";
@@ -8,6 +7,7 @@ import SuccessBanner from "@/components/results/SuccessBanner";
 import JobDescriptionPanel from "@/components/results/JobDescriptionPanel";
 import TailoredCVPanel from "@/components/results/TailoredCVPanel";
 import ImprovementsPanel from "@/components/results/ImprovementsPanel";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Improvement {
   category: string;
@@ -28,6 +28,7 @@ const Results = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     // Retrieve results from sessionStorage
@@ -82,11 +83,11 @@ const Results = () => {
     setIsDownloading(true);
     
     try {
-      // Check if we have a stored file path
-      if (results.tailoredCVFilePath) {
+      // Check if we have a stored file path and user is authenticated
+      if (results.tailoredCVFilePath && user) {
         // Download from Supabase storage
         const { data, error } = await supabase.storage
-          .from('tailored_cv')
+          .from('user_files')
           .download(results.tailoredCVFilePath);
         
         if (error) {

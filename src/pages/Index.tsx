@@ -177,6 +177,18 @@ const Index = () => {
             throw error;
           }
           
+          const textFileName = `${Date.now()}_content.txt`;
+          const textFilePath = `${user.id}/job/${textFileName}`;
+          const textBlob = new Blob([content], { type: 'text/plain' });
+          
+          const { error: textError } = await supabase.storage
+            .from('user_files')
+            .upload(textFilePath, textBlob);
+            
+          if (textError) {
+            console.error("Error saving job description text:", textError);
+          }
+          
           setJobDescription({ file, filePath, content });
         } catch (error: any) {
           toast({
@@ -307,7 +319,6 @@ const Index = () => {
     setProgress(0);
     
     try {
-      // Calculate estimated processing time based on file sizes
       const startTime = new Date().getTime();
       
       let cvContentToUse = cvContent;
@@ -327,19 +338,33 @@ const Index = () => {
         }
       }
       
-      // Content extraction time
+      if (user && jobDescContentToUse && !jobDescription.file) {
+        try {
+          const textFileName = `${Date.now()}_manual_content.txt`;
+          const textFilePath = `${user.id}/job/${textFileName}`;
+          const textBlob = new Blob([jobDescContentToUse], { type: 'text/plain' });
+          
+          const { error: textError } = await supabase.storage
+            .from('user_files')
+            .upload(textFilePath, textBlob);
+            
+          if (textError) {
+            console.error("Error saving manual job description text:", textError);
+          }
+        } catch (error) {
+          console.error("Error saving manual job description:", error);
+        }
+      }
+      
       const extractionTime = (new Date().getTime() - startTime) / 1000;
       
-      // Estimate API processing time based on content length (chars)
-      // Add 3 seconds buffer for safety
       const cvLength = cvContentToUse?.length || 0;
       const jobLength = jobDescContentToUse?.length || 0;
       const totalLength = cvLength + jobLength;
       
-      // Base time + scaling factor for content length + extraction time + buffer
-      const baseTime = 10; // base seconds for API connection and processing
-      const scalingFactor = 0.001; // seconds per character
-      const bufferTime = 3; // additional buffer in seconds
+      const baseTime = 10;
+      const scalingFactor = 0.001;
+      const bufferTime = 3;
       
       const estimatedTotalTime = baseTime + (totalLength * scalingFactor) + extractionTime + bufferTime;
       setEstimatedSecondsRemaining(Math.ceil(estimatedTotalTime));
@@ -349,7 +374,6 @@ const Index = () => {
         jobDescLength: jobDescContentToUse?.length || 0
       });
       
-      // Start counting down the estimated time
       countdownIntervalRef.current = setInterval(() => {
         setEstimatedSecondsRemaining((prev) => {
           if (prev <= 1) {
@@ -364,7 +388,6 @@ const Index = () => {
       }, 1000);
       
       try {
-        // Use the new API utility instead of direct fetch
         const apiResponse = await callAnthropicAPI({
           cv: cvContentToUse || "No CV content provided.",
           jobDescription: jobDescContentToUse || "No job description provided.",
@@ -372,7 +395,6 @@ const Index = () => {
           userId: user?.id || null
         });
         
-        // Store results in session storage for the results page
         sessionStorage.setItem('tailoringResults', JSON.stringify({
           originalCV: cvContentToUse,
           jobDescription: jobDescContentToUse,
@@ -381,20 +403,17 @@ const Index = () => {
           summary: apiResponse.summary
         }));
         
-        // Clear any interval that might be running
         if (countdownIntervalRef.current) {
           clearInterval(countdownIntervalRef.current);
           countdownIntervalRef.current = null;
         }
         
-        // Navigate to results page
         navigate('/results');
       } catch (error) {
         console.error('API error:', error);
         setError(error instanceof Error ? error.message : String(error));
         setIsProcessing(false);
         
-        // Clear countdown if there was an error
         if (countdownIntervalRef.current) {
           clearInterval(countdownIntervalRef.current);
           countdownIntervalRef.current = null;
@@ -411,7 +430,6 @@ const Index = () => {
     setIsProcessing(false);
     setEstimatedSecondsRemaining(0);
     
-    // Clear the interval when canceling
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;

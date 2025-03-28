@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
-import { generateDocx } from "./docx-generator";
+// @ts-ignore: Using relative import with .ts extension for Deno compatibility
+import { generateDocx } from "./docx-generator.ts";
 
 // Define interfaces for our response types
 interface Improvement {
@@ -39,6 +40,13 @@ serve(async (req)=>{
       headers: corsHeaders
     });
   }
+  
+  // Skip authentication in local development if the x-skip-auth header is present
+  const skipAuth = req.headers.get('x-skip-auth') === 'true';
+  if (skipAuth) {
+    console.log("Skipping authentication for local development");
+  }
+  
   // Check if API key exists
   if (!anthropicApiKey) {
     console.error("Missing Anthropic API key");
@@ -230,29 +238,33 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
       // If we have a Supabase client and user ID, save the tailored CV as a file and store in database
       if (supabase && userId && processedResults.tailoredCV) {
         try {
-          console.log("Generating DOCX document from tailored CV...");
+          console.log("Preparing to save tailored CV...");
           
-          // Generate proper DOCX document
-          let buffer: Uint8Array;
-          let contentType: string;
-          let fileExtension: string;
+          // Default to plain text in case DOCX generation fails
+          let buffer: Uint8Array = new TextEncoder().encode(processedResults.tailoredCV);
+          let contentType: string = 'text/plain';
+          let fileExtension: string = 'txt';
           
+          // Try to generate a proper DOCX document but don't let it crash the entire function
           try {
-            // Try to generate a proper DOCX document
-            buffer = await generateDocx(processedResults.tailoredCV);
-            contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-            fileExtension = 'docx';
-            console.log("DOCX document generated successfully");
+            console.log("Attempting to generate DOCX document...");
+            const docxBuffer = await generateDocx(processedResults.tailoredCV);
+            if (docxBuffer && docxBuffer.length > 0) {
+              buffer = docxBuffer;
+              contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+              fileExtension = 'docx';
+              console.log("DOCX document generated successfully, size:", buffer.length);
+            } else {
+              console.warn("DOCX generation returned empty buffer, falling back to plain text");
+            }
           } catch (docxError) {
-            // Fallback to plain text if DOCX generation fails
+            // Log the error but continue with plain text
             console.error("Error generating DOCX document:", docxError);
-            buffer = new TextEncoder().encode(processedResults.tailoredCV);
-            contentType = 'text/plain';
-            fileExtension = 'txt';
             console.log("Falling back to plain text format");
           }
           
           const filePath = `${userId}/tailored_cv/${Date.now()}_tailored_cv.${fileExtension}`;
+          console.log(`Saving file to ${filePath} with content type ${contentType}`);
           
           // Upload to Supabase storage
           const { data: uploadData, error: uploadError } = await supabase.storage.from('user_files').upload(filePath, buffer, {

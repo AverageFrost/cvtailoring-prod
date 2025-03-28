@@ -50,6 +50,8 @@ export const callAnthropicAPI = async (
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${AUTH_TOKEN}`,
+        // Add x-skip-auth header for local development
+        ...((!isProduction) && { 'x-skip-auth': 'true' })
       },
       body: JSON.stringify(params)
     });

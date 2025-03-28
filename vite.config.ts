@@ -18,11 +18,12 @@ export default defineConfig(({ mode }: { mode: string }) => ({
     port: 8080,
     proxy: {
       '/api/anthropic-chat': {
-        target: 'https://kuldrlyjjimvoiedwjmf.supabase.co/functions/v1/anthropic-chat',
+        target: 'http://127.0.0.1:54321',
         changeOrigin: true,
-        rewrite: (path: string) => path.replace(/^\/api\/anthropic-chat/, ''),
+        rewrite: (path: string) => path.replace(/^\/api\/anthropic-chat/, '/functions/v1/anthropic-chat'),
         headers: {
           'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1bGRybHlqamltdm9pZWR3am1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4MjExMjQsImV4cCI6MjA1NzM5NzEyNH0.IFIIgTWdFu5A2s5Ke5Uvy4l-6NW4gFNVx8sE_3Da-zI',
+          'x-skip-auth': 'true'
         },
         configure: (proxy: any, _options: any) => {
           // Add proxy event listener to force content-type to be application/json

@@ -23,6 +23,27 @@ const cleanCategoryName = (category: string): string => {
   return cleaned;
 };
 
+// Function to process item text and extract sub-headers
+const processItemText = (text: string): React.ReactNode => {
+  // Look for known section headers with colons
+  const headerRegex = /(Employment History:|Areas of Expertise:|Key Skills:|Education:|Professional Qualifications:|Technical Skills:|Achievements:|Projects:)(.+)/i;
+  
+  const match = text.match(headerRegex);
+  if (match) {
+    // Split into header and remaining content
+    const [_, header, content] = match;
+    
+    return (
+      <>
+        <span className="text-[#3F2A51] font-medium">{header}</span>
+        {content}
+      </>
+    );
+  }
+  
+  return text;
+};
+
 const ImprovementsPanel = ({ improvements }: ImprovementsPanelProps) => {
   return (
     <Card className="border-[#E2DCF8] shadow-sm">
@@ -40,7 +61,7 @@ const ImprovementsPanel = ({ improvements }: ImprovementsPanelProps) => {
               <ul className="list-disc pl-6 space-y-1">
                 {improvement.items.map((item, itemIndex) => (
                   <li key={itemIndex} className="text-sm text-gray-700">
-                    {item}
+                    {processItemText(item)}
                   </li>
                 ))}
               </ul>

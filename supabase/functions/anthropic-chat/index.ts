@@ -418,25 +418,34 @@ function parseImprovements(improvementsText: string): Improvement[] {
   const categories: Improvement[] = [];
   let currentCategory: string | null = null;
   let currentItems: string[] = [];
+  
   // Split by lines and process
   const lines = improvementsText.split('\n');
-  for (const line of lines){
+  for (const line of lines) {
     const trimmedLine = line.trim();
     // Skip empty lines
     if (!trimmedLine) continue;
+    
     // Check if this is a category header (bold text, starts with *, etc.)
-    if (trimmedLine.match(/^[#*]|^\*\*|^-\s*\*\*/) || trimmedLine.match(/^[A-Z]/) && !currentCategory) {
+    if (trimmedLine.match(/^[#*]|^\*\*|^-\s*\*\*/) || (trimmedLine.match(/^[A-Z]/) && !currentCategory)) {
       // If we have a previous category, save it
       if (currentCategory && currentItems.length) {
+        // Clean the category name before adding it
+        const cleanedCategory = currentCategory.replace(/^Key changes made to the CV:\s*/i, "").replace(/:\s*$/, "");
+        
         categories.push({
-          category: currentCategory,
-          items: [
-            ...currentItems
-          ]
+          category: cleanedCategory,
+          items: [...currentItems]
         });
       }
-      // Start a new category
-      currentCategory = trimmedLine.replace(/^[#*-\s]*|\*\*/g, '').trim();
+      
+      // Start a new category - clean it first
+      let newCategory = trimmedLine.replace(/^[#*-\s]*|\*\*/g, '').trim();
+      
+      // Remove prefixes like "Key changes made to the CV:"
+      newCategory = newCategory.replace(/^Key changes made to the CV:\s*/i, "");
+      
+      currentCategory = newCategory;
       currentItems = [];
     } else if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•') || trimmedLine.match(/^\d+\./)) {
       // Add to current items
@@ -447,29 +456,30 @@ function parseImprovements(improvementsText: string): Improvement[] {
       if (currentItems.length === 0) {
         currentCategory += ' ' + trimmedLine;
       } else if (currentItems.length > 0) {
+        // Append to the last item if it's a continuation
         currentItems[currentItems.length - 1] += ' ' + trimmedLine;
       }
     }
   }
+  
   // Add the last category if there is one
   if (currentCategory && currentItems.length) {
+    // Clean the category name before adding it
+    const cleanedCategory = currentCategory.replace(/^Key changes made to the CV:\s*/i, "").replace(/:\s*$/, "");
+    
     categories.push({
-      category: currentCategory,
-      items: [
-        ...currentItems
-      ]
+      category: cleanedCategory,
+      items: [...currentItems]
     });
   }
+  
   // If no structured categories were found, create a general one
   if (categories.length === 0 && improvementsText) {
-    return [
-      {
-        category: "General Improvements",
-        items: [
-          improvementsText
-        ]
-      }
-    ];
+    return [{
+      category: "General Improvements",
+      items: [improvementsText]
+    }];
   }
+  
   return categories;
 }

@@ -12,6 +12,17 @@ interface ImprovementsPanelProps {
   improvements: Improvement[];
 }
 
+// Function to clean category names
+const cleanCategoryName = (category: string): string => {
+  // Remove "Key changes made to the CV:" prefix if it exists
+  let cleaned = category.replace(/^Key changes made to the CV:\s*/i, "");
+  
+  // If there's a colon at the end of the category, remove it
+  cleaned = cleaned.replace(/:\s*$/, "");
+  
+  return cleaned;
+};
+
 const ImprovementsPanel = ({ improvements }: ImprovementsPanelProps) => {
   return (
     <Card className="border-[#E2DCF8] shadow-sm">
@@ -24,7 +35,7 @@ const ImprovementsPanel = ({ improvements }: ImprovementsPanelProps) => {
             <div key={index} className="mb-4">
               <h3 className="flex items-center text-[#3F2A51] font-semibold mb-1">
                 <Star className="h-4 w-4 mr-2 text-[#AF93C8]" />
-                {improvement.category}
+                {cleanCategoryName(improvement.category)}
               </h3>
               <ul className="list-disc pl-6 space-y-1">
                 {improvement.items.map((item, itemIndex) => (

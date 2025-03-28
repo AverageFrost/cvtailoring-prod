@@ -49,24 +49,6 @@ serve(async (req)=>{
     });
   }
   try {
-    // Debug the Anthropic SDK structure
-    // try {
-    //   const anthropic = new Anthropic({
-    //     apiKey: "sk-ant-debug-only"
-    //   });
-    //   
-    //   console.log("Anthropic SDK structure:");
-    //   console.log("Has messages property:", !!anthropic.messages);
-    //   console.log("Has beta property:", !!anthropic.beta);
-    //   if (anthropic.beta) {
-    //     console.log("Has beta.messages property:", !!anthropic.beta.messages);
-    //   }
-    //   
-    //   // Log all top-level properties
-    //   console.log("Available properties:", Object.keys(anthropic));
-    // } catch (e) {
-    //   console.error("Error inspecting Anthropic SDK:", e);
-    // }
     // Parse request body
     let requestBody;
     try {
@@ -99,7 +81,6 @@ serve(async (req)=>{
     console.log("User ID:", userId || 'No user ID provided');
     // Initialize Supabase client if environment variables are present
     const supabase = supabaseUrl && supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey) : null;
-    // IMPORTANT CHANGE: Enhanced error handling and debugging
     try {
       // Debug the API key (first few and last few characters)
       const maskedKey = anthropicApiKey ? 
@@ -248,17 +229,36 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
       // If we have a Supabase client and user ID, save the tailored CV as a file and store in database
       if (supabase && userId && processedResults.tailoredCV) {
         try {
-          // Create a blob and upload to Supabase storage
+          // Create a blob and upload to Supabase storage for CV
           const buffer = new TextEncoder().encode(processedResults.tailoredCV);
-          const filePath = `${userId}/${Date.now()}_tailored_cv.docx`;
-          const { data: uploadData, error: uploadError } = await supabase.storage.from('tailored_cv').upload(filePath, buffer, {
+          const filePath = `${userId}/tailored_cv/${Date.now()}_tailored_cv.docx`;
+          const { data: uploadData, error: uploadError } = await supabase.storage.from('user_files').upload(filePath, buffer, {
             contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             upsert: true
           });
+          
           if (uploadError) {
             console.error("Error uploading file to storage:", uploadError);
           } else {
             console.log("File uploaded successfully:", uploadData?.path);
+            
+            // Also save the job description if provided and not empty
+            if (jobDescription && jobDescription.trim() !== "") {
+              const jobBuffer = new TextEncoder().encode(jobDescription);
+              const jobFilePath = `${userId}/job/${Date.now()}_job_description.txt`;
+              
+              const { error: jobUploadError } = await supabase.storage.from('user_files').upload(jobFilePath, jobBuffer, {
+                contentType: 'text/plain',
+                upsert: true
+              });
+              
+              if (jobUploadError) {
+                console.error("Error uploading job description to storage:", jobUploadError);
+              } else {
+                console.log("Job description uploaded successfully");
+              }
+            }
+            
             // Add the file path to the processed results
             processedResults.tailoredCVFilePath = filePath;
             // Save the results to the database

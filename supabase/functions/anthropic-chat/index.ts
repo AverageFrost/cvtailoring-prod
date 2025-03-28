@@ -28,7 +28,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Content-Type': 'application/json'
 };
-
 serve(async (req)=>{
   console.log("--- New request received ---");
   // Handle CORS preflight requests
@@ -349,7 +348,6 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
     });
   }
 });
-
 function processAnthropicResponse(response: string): ProcessedResponse {
   // This is a simple implementation - you may need to adjust based on actual responses
   const sections = response.split(/(?=\n#+\s)/);
@@ -395,7 +393,6 @@ function processAnthropicResponse(response: string): ProcessedResponse {
     summary
   };
 }
-
 function extractContent(section: string): string {
   // Remove the header (if any) and return the content
   const lines = section.split('\n');
@@ -404,7 +401,6 @@ function extractContent(section: string): string {
   }
   return section.trim();
 }
-
 function extractSummary(text: string): string {
   // Extract a summary from the explanation
   const lines = text.split('\n');
@@ -417,21 +413,14 @@ function extractSummary(text: string): string {
   }
   return "CV has been tailored to match the job description requirements.";
 }
-
 function parseImprovements(improvementsText: string): Improvement[] {
   // Parse the improvements section into categories and items
   const categories: Improvement[] = [];
   let currentCategory: string | null = null;
   let currentItems: string[] = [];
   
-  // Pre-process the text - extract inline section headers from list items
-  let processedText = improvementsText;
-  
-  // The pattern to recognize content with section headers inside list items
-  const inlineHeaderPattern = /(-\s*.*?)(Employment History:|Areas of Expertise:|Key Skills:|Education:|Professional Qualifications:|Technical Skills:|Achievements:|Projects:)(.+)/gi;
-  
   // Split by lines and process
-  const lines = processedText.split('\n');
+  const lines = improvementsText.split('\n');
   for (const line of lines) {
     const trimmedLine = line.trim();
     // Skip empty lines

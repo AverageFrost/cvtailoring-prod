@@ -114,6 +114,31 @@ GUIDELINES:
 - Maintain the candidate's authentic voice and professional tone
 - Aim for clarity while maintaining depth in all content modifications
 
+ABSOLUTE COMPLIANCE RULES:
+
+MANDATORY: Every single statement in the tailored CV MUST be:
+- DIRECTLY quoted from the original CV
+- OR rephrased to suit the job description using EXACT content from the original CV
+- OR explicitly marked as a "SKILL GAP" separate from the rest of the CV content
+
+If NO matching experience exists for a job requirement:
+- MUST create a "SKILL GAP ANALYSIS" section
+- Clearly state missing qualifications
+- Provide recommendations for skill development
+- NEVER invent fictional experiences
+
+VERIFICATION PROCESS:
+- Cross-reference EVERY modification against:
+  a) Original CV text
+  b) Job description requirements
+- Provide line-of-sight traceability for ALL changes
+
+PROHIBITED ACTIONS:
+❌ DO NOT add ANY experience not in original documents
+❌ DO NOT modify core factual statements in the original CV
+❌ DO NOT make assumptions about candidate's capabilities beyond what's in their CV
+❌ DO NOT generate hypothetical experiences or skills that are not explicitly stated in the original CV
+
 RESPONSE FORMAT:
 - Always analyze both the CV and job description thoroughly before making recommendations
 - Clearly separate your analysis from actual recommended changes
@@ -197,6 +222,8 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
         body: JSON.stringify({
           model: "claude-3-haiku-20240307",
           max_tokens: 4000,
+          temperature: 0.2,
+          top_p: 0.5,
           system: systemPrompt,
           messages: [
             {

@@ -17,7 +17,7 @@ const SuccessBanner = ({ title, description, actionText, onAction }: SuccessBann
   }
 
   return (
-    <div className="bg-[#E0F6E8] border-l-4 border-[#4CAF50] text-[#3F2A51] py-2 px-4 mb-6 rounded flex items-center justify-between">
+    <div className="bg-[#E0F6E8] border-l-4 border-[#4CAF50] text-[#3F2A51] py-2 px-4 mb-3 rounded flex items-center justify-between">
       <div className="flex items-center">
         <div className="bg-[#4CAF50] p-1 rounded-full mr-3">
           <Check className="h-4 w-4 text-white" />

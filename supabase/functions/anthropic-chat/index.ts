@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -424,6 +425,9 @@ function parseImprovements(improvementsText: string): Improvement[] {
   const categories: Improvement[] = [];
   let currentCategory: string | null = null;
   let currentItems: string[] = [];
+  
+  // Define regex for common section headers that might be embedded in items
+  const sectionHeaderRegex = /(Employment History|Areas of Expertise|Skills|Education|Work Experience|Professional Experience|Technical Skills|Certifications|Projects):/i;
   
   // Split by lines and process
   const lines = improvementsText.split('\n');

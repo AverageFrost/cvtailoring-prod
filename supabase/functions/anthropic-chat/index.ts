@@ -201,6 +201,7 @@ After completing your analysis and updates, present your results in the followin
 
 1. The updated CV, enclosed in <updated_cv> tags
 2. An explanation of the changes made, enclosed in <explanation> tags. Include:
+   - Section headers based on CV sections
    - Key changes in each section of the CV
    - Rationale behind the changes
    - How the changes align with the job description

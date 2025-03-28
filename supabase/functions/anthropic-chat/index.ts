@@ -1,6 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
+// Define interfaces for our response types
+interface Improvement {
+  category: string;
+  items: string[];
+}
+
+interface ProcessedResponse {
+  tailoredCV: string;
+  improvements: Improvement[];
+  summary: string;
+  tailoredCVFilePath?: string; // Make this property optional
+}
+
 // Import Anthropic SDK
 // Note: We need to use a Deno-compatible version of the SDK
 // import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.14.0";
@@ -308,11 +321,11 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
     });
   }
 });
-function processAnthropicResponse(response) {
+function processAnthropicResponse(response: string): ProcessedResponse {
   // This is a simple implementation - you may need to adjust based on actual responses
   const sections = response.split(/(?=\n#+\s)/);
   let tailoredCV = "";
-  let improvements = [];
+  let improvements: Improvement[] = [];
   let summary = "";
   // Extract content between tags
   const updatedCvMatch = response.match(/<updated_cv>([\s\S]*?)<\/updated_cv>/);
@@ -353,7 +366,7 @@ function processAnthropicResponse(response) {
     summary
   };
 }
-function extractContent(section) {
+function extractContent(section: string): string {
   // Remove the header (if any) and return the content
   const lines = section.split('\n');
   if (lines[0].startsWith('#')) {
@@ -361,7 +374,7 @@ function extractContent(section) {
   }
   return section.trim();
 }
-function extractSummary(text) {
+function extractSummary(text: string): string {
   // Extract a summary from the explanation
   const lines = text.split('\n');
   // Get the first paragraph as summary or first few sentences
@@ -373,11 +386,11 @@ function extractSummary(text) {
   }
   return "CV has been tailored to match the job description requirements.";
 }
-function parseImprovements(improvementsText) {
+function parseImprovements(improvementsText: string): Improvement[] {
   // Parse the improvements section into categories and items
-  const categories = [];
-  let currentCategory = null;
-  let currentItems = [];
+  const categories: Improvement[] = [];
+  let currentCategory: string | null = null;
+  let currentItems: string[] = [];
   // Split by lines and process
   const lines = improvementsText.split('\n');
   for (const line of lines){

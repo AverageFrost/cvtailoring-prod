@@ -231,9 +231,9 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
         try {
           // Create a blob and upload to Supabase storage for CV
           const buffer = new TextEncoder().encode(processedResults.tailoredCV);
-          const filePath = `${userId}/tailored_cv/${Date.now()}_tailored_cv.docx`;
+          const filePath = `${userId}/tailored_cv/${Date.now()}_tailored_cv.txt`;
           const { data: uploadData, error: uploadError } = await supabase.storage.from('user_files').upload(filePath, buffer, {
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            contentType: 'text/plain',
             upsert: true
           });
           

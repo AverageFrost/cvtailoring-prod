@@ -99,7 +99,7 @@ const Results = () => {
           const url = URL.createObjectURL(data);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'tailored-cv.docx';
+          a.download = 'tailored-cv.txt';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -107,11 +107,11 @@ const Results = () => {
         }
       } else {
         // Fallback to the old method if no file path exists
-        const blob = new Blob([results.tailoredCV], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const blob = new Blob([results.tailoredCV], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'tailored-cv.docx';
+        a.download = 'tailored-cv.txt';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -144,7 +144,7 @@ const Results = () => {
       <div className="w-full max-w-6xl mt-2">
         <SuccessBanner 
           title="Success!"
-          description="Your CV has been tailored to match the job description. You can now download it as a .docx file or start over."
+          description="Your CV has been tailored to match the job description. You can now download it as a text file or start over."
           actionText="Start Over"
           onAction={() => navigate('/')}
         />

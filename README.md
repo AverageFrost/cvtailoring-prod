@@ -1,40 +1,8 @@
-
-# CV Tailor Assistant
-
-This application helps users tailor their CVs to specific job descriptions using AI.
+# Welcome to your Lovable project
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/d2b4dbf1-dbf2-4628-b314-5a2969d21712
-
-## Environment Variables
-
-This project uses environment variables for configuration. Here's how to set them up:
-
-### Required Environment Variables
-
-- `VITE_SUPABASE_URL`: Your Supabase project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY`: Your Supabase anon/public key
-
-### Development Setup
-
-1. Create a `.env.local` file in the root of your project with the following variables:
-```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
-```
-
-2. For local development, the application includes fallback values, but it's recommended to set these variables for consistent behavior across environments.
-
-### Production Setup
-
-When deploying to production:
-
-1. Set the environment variables in your hosting platform's configuration:
-   - If using Lovable's deployment: Click on Share -> Publish, then configure these variables in the deployment settings.
-   - If using a custom deployment: Configure these variables in your hosting provider's environment settings.
-
-2. The production environment should not rely on fallback values for security and reliability reasons.
 
 ## How can I edit this code?
 
@@ -84,15 +52,13 @@ npm run dev
 
 ## What technologies are used for this project?
 
-This project is built with:
+This project is built with .
 
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
-- Supabase (for backend functionality and authentication)
-- Anthropic API (for CV tailoring)
 
 ## How can I deploy this project?
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader } from "lucide-react";
@@ -7,7 +8,6 @@ import SuccessBanner from "@/components/results/SuccessBanner";
 import JobDescriptionPanel from "@/components/results/JobDescriptionPanel";
 import TailoredCVPanel from "@/components/results/TailoredCVPanel";
 import ImprovementsPanel from "@/components/results/ImprovementsPanel";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface Improvement {
   category: string;
@@ -28,7 +28,6 @@ const Results = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
 
   useEffect(() => {
     // Retrieve results from sessionStorage
@@ -83,11 +82,11 @@ const Results = () => {
     setIsDownloading(true);
     
     try {
-      // Check if we have a stored file path and user is authenticated
-      if (results.tailoredCVFilePath && user) {
+      // Check if we have a stored file path
+      if (results.tailoredCVFilePath) {
         // Download from Supabase storage
         const { data, error } = await supabase.storage
-          .from('user_files')
+          .from('tailored_cv')
           .download(results.tailoredCVFilePath);
         
         if (error) {
@@ -140,8 +139,8 @@ const Results = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F6FE] flex flex-col items-center px-4 py-2">
-      <div className="w-full max-w-6xl mt-2">
+    <div className="min-h-screen bg-[#F8F6FE] flex flex-col items-center px-4 py-4">
+      <div className="w-full max-w-6xl">
         <SuccessBanner 
           title="Success!"
           description="Your CV has been tailored to match the job description. You can now download it as a .docx file or start over."
@@ -149,7 +148,7 @@ const Results = () => {
           onAction={() => navigate('/')}
         />
         
-        <h1 className="text-2xl font-semibold text-[#3F2A51] mb-4 mt-1 text-left">Your Tailored CV</h1>
+        <h1 className="text-2xl font-semibold text-[#3F2A51] mb-6 text-left">Your Tailored CV</h1>
         
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           <JobDescriptionPanel content={results.jobDescription} />

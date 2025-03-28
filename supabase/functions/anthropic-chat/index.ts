@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
+import { generateDocx } from "./docx-generator";
 
 // Define interfaces for our response types
 interface Improvement {
@@ -229,11 +230,33 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
       // If we have a Supabase client and user ID, save the tailored CV as a file and store in database
       if (supabase && userId && processedResults.tailoredCV) {
         try {
-          // Create a blob and upload to Supabase storage for CV
-          const buffer = new TextEncoder().encode(processedResults.tailoredCV);
-          const filePath = `${userId}/tailored_cv/${Date.now()}_tailored_cv.docx`;
+          console.log("Generating DOCX document from tailored CV...");
+          
+          // Generate proper DOCX document
+          let buffer: Uint8Array;
+          let contentType: string;
+          let fileExtension: string;
+          
+          try {
+            // Try to generate a proper DOCX document
+            buffer = await generateDocx(processedResults.tailoredCV);
+            contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            fileExtension = 'docx';
+            console.log("DOCX document generated successfully");
+          } catch (docxError) {
+            // Fallback to plain text if DOCX generation fails
+            console.error("Error generating DOCX document:", docxError);
+            buffer = new TextEncoder().encode(processedResults.tailoredCV);
+            contentType = 'text/plain';
+            fileExtension = 'txt';
+            console.log("Falling back to plain text format");
+          }
+          
+          const filePath = `${userId}/tailored_cv/${Date.now()}_tailored_cv.${fileExtension}`;
+          
+          // Upload to Supabase storage
           const { data: uploadData, error: uploadError } = await supabase.storage.from('user_files').upload(filePath, buffer, {
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            contentType: contentType,
             upsert: true
           });
           

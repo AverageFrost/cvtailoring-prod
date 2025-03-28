@@ -23,6 +23,35 @@ const cleanCategoryName = (category: string): string => {
   return cleaned;
 };
 
+// Function to process item text and identify embedded section headers
+const processItemText = (text: string): React.ReactNode => {
+  // Check for common section headers that might be embedded in item text
+  const sectionHeaderRegex = /(Employment History|Areas of Expertise|Skills|Education|Work Experience|Professional Experience|Technical Skills|Certifications|Projects):\s*/i;
+  
+  if (sectionHeaderRegex.test(text)) {
+    const parts = text.split(sectionHeaderRegex);
+    
+    // If we found a section header
+    if (parts.length >= 3) {
+      const beforeHeader = parts[0];
+      const header = parts[1];
+      const afterHeader = parts[2];
+      
+      return (
+        <>
+          {beforeHeader}
+          {beforeHeader && " "}
+          <span className="font-semibold text-[#3F2A51]">{header}:</span>
+          {afterHeader}
+        </>
+      );
+    }
+  }
+  
+  // No section header found, return the original text
+  return text;
+};
+
 const ImprovementsPanel = ({ improvements }: ImprovementsPanelProps) => {
   return (
     <Card className="border-[#E2DCF8] shadow-sm">
@@ -40,7 +69,7 @@ const ImprovementsPanel = ({ improvements }: ImprovementsPanelProps) => {
               <ul className="list-disc pl-6 space-y-1">
                 {improvement.items.map((item, itemIndex) => (
                   <li key={itemIndex} className="text-sm text-gray-700">
-                    {item}
+                    {processItemText(item)}
                   </li>
                 ))}
               </ul>

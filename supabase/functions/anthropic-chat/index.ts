@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.31.0";
 
@@ -249,10 +250,18 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
       const data = await response.json();
       console.log("Successfully received response from Anthropic API");
       
+      // Add detailed logging of the raw API response
+      console.log("RAW ANTHROPIC API RESPONSE:");
+      console.log(JSON.stringify(data, null, 2));
+      
       const aiResponse = data.content && data.content[0] && data.content[0].text 
         ? data.content[0].text 
         : "Sorry, I couldn't generate a response.";
         
+      // Log the extracted text response
+      console.log("EXTRACTED TEXT RESPONSE:");
+      console.log(aiResponse);
+      
       const processedResults = processAnthropicResponse(aiResponse);
       
       // If we have a Supabase client and user ID, save the tailored CV as a file and store in database

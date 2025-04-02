@@ -22,12 +22,18 @@ export default defineConfig(({ mode }: { mode: string }) => ({
         changeOrigin: true,
         rewrite: (path: string) => path.replace(/^\/api\/anthropic-chat/, '/functions/v1/anthropic-chat'),
         headers: {
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1bGRybHlqamltdm9pZWR3am1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4MjExMjQsImV4cCI6MjA1NzM5NzEyNH0.IFIIgTWdFu5A2s5Ke5Uvy4l-6NW4gFNVx8sE_3Da-zI',
           'x-skip-auth': 'true'
         },
         configure: (proxy: any, _options: any) => {
           // Add proxy event listener to force content-type to be application/json
           proxy.on('proxyRes', (proxyRes: any, _req: any, _res: any) => {
+            // Forward any headers from the original request
+            proxy.on('proxyReq', (proxyReq: any, req: any, _res: any) => {
+              if (req.headers.authorization) {
+                proxyReq.setHeader('Authorization', req.headers.authorization);
+              }
+            });
+
             // If the response has content, set the content type to JSON regardless of what was returned
             if (proxyRes.headers['content-length'] && parseInt(proxyRes.headers['content-length']) > 0) {
               console.log('Forcing content-type to application/json');

@@ -19,8 +19,12 @@ interface ProcessedResponse {
 // import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.14.0";
 
 const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL');
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+// Try alternate variables (without SUPABASE_ prefix)
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('API_URL');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY');
+const jwtSecret = Deno.env.get('SUPABASE_JWT_SECRET') || Deno.env.get('JWT_SECRET');
+const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('ANON_KEY');
+
 // Make sure CORS headers are correctly set
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,6 +35,25 @@ const corsHeaders = {
 
 serve(async (req)=>{
   console.log("--- New request received ---");
+  
+  // Debug environment variables
+  console.log("Environment variables check:");
+  console.log("- ANTHROPIC_API_KEY:", anthropicApiKey ? "Found (masked)" : "NOT FOUND");
+  console.log("- API_URL:", Deno.env.get('API_URL') || "NOT FOUND");
+  console.log("- JWT_SECRET:", Deno.env.get('JWT_SECRET') ? "Found (masked)" : "NOT FOUND");
+  console.log("- ANON_KEY:", Deno.env.get('ANON_KEY') ? "Found (masked)" : "NOT FOUND");
+  console.log("- SERVICE_ROLE_KEY:", Deno.env.get('SERVICE_ROLE_KEY') ? "Found (masked)" : "NOT FOUND");
+  
+  // Check for x-skip-auth header - for development mode
+  const skipAuth = req.headers.get('x-skip-auth') === 'true';
+  if (skipAuth) {
+    console.log("Skipping JWT authentication for local development");
+  } else {
+    console.log("JWT authentication required");
+    // You would normally verify the JWT here
+    // This is likely where the error is happening at file:///root/index.ts:94:5
+  }
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log("Handling CORS preflight request");
@@ -141,11 +164,44 @@ PROHIBITED ACTIONS:
 ❌ DO NOT generate hypothetical experiences or skills that are not explicitly stated in the original CV
 
 RESPONSE FORMAT:
-- Always analyze both the CV and job description thoroughly before making recommendations
-- Clearly separate your analysis from actual recommended changes
-- Use the specified XML tags to structure your output
-- Provide clear rationales for all suggested modifications
-- When explaining changes, focus on how they improve alignment with the job description
+You MUST format your response precisely according to these specifications:
+
+1. The updated CV must be enclosed in <updated_cv> tags.
+
+2. All explanations must be enclosed in <explanation> tags and use this strict format:
+
+   <explanation>
+   # CV SUMMARY
+   Brief summary of the key changes and overall improvements.
+
+   # IMPROVEMENTS BY SECTION
+   
+   ## Professional Summary
+   * Changed X to highlight Y
+   * Added emphasis on Z
+   
+   ## Work Experience
+   * Rephrased job responsibilities to focus on A
+   * Highlighted achievement B
+   
+   ## Skills
+   * Prioritized technical skills X, Y, Z
+   * Added missing relevant skills
+   
+   ## Education
+   * No changes needed
+   
+   # SKILL GAP ANALYSIS
+   * Missing experience with X
+   * Limited background in Y
+   </explanation>
+
+FORMATTING RULES:
+- Use only plain markdown headers with # and ## (no "Section:" prefixes)
+- Each improvement must be a bullet point starting with *
+- Section headers must be exactly as shown above with no additional text
+- Do not include "Key changes" or other descriptive text in the headers
+- Each bullet point should be a single, complete thought
 
 You must remain factual and honest, helping candidates present their genuine qualifications in the most favorable light without misrepresentation. Your goal is to help qualified candidates get noticed, not to help unqualified candidates mislead employers.`;
       const userPrompt = `You are an AI recruitment assistant specialized in tailoring CVs (Curriculum Vitae) to specific job descriptions. Your task is to optimize a candidate's CV to increase their chances of securing an interview for a particular role.
@@ -224,8 +280,8 @@ Remember to maintain professionalism and accuracy throughout the tailoring proce
         body: JSON.stringify({
           model: "claude-3-haiku-20240307",
           max_tokens: 4000,
-          temperature: 0.2,
-          top_p: 0.5,
+          temperature: 0.4,
+          top_p: 0.7,
           system: systemPrompt,
           messages: [
             {
